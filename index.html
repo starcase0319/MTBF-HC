@@ -4,62 +4,67 @@
     <meta charset="UTF-8">
     <title>MTBF 國際標準量化驗證工具 (修正版)</title>
     <style>
-        body { font-family: "Segoe UI", "Microsoft JhengHei", sans-serif; background-color: #f4f7f6; padding: 25px; color: #333; }
-        .container { max-width: 950px; margin: 0 auto; background: #fff; padding: 35px; border-radius: 15px; box-shadow: 0 5px 25px rgba(0,0,0,0.1); }
-        .header { text-align: center; border-bottom: 3px solid #2980b9; margin-bottom: 25px; padding-bottom: 10px; }
-        .declaration { background: #fdf2e9; border-left: 5px solid #e67e22; padding: 15px; font-size: 0.9rem; margin-bottom: 25px; }
-        .grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; }
-        .section-title { grid-column: span 2; font-weight: bold; color: #2c3e50; background: #eee; padding: 8px 15px; border-radius: 5px; margin-top: 15px; }
+        body { font-family: "Segoe UI", "Microsoft JhengHei", sans-serif; background-color: #f4f7f9; padding: 20px; color: #333; }
+        .container { max-width: 950px; margin: 0 auto; background: #fff; padding: 30px; border-radius: 12px; box-shadow: 0 5px 20px rgba(0,0,0,0.1); }
+        .declaration { background: #e8f4fd; border-left: 5px solid #3498db; padding: 15px; font-size: 0.9rem; margin-bottom: 25px; line-height: 1.5; }
+        .mode-switch { display: flex; gap: 10px; margin-bottom: 20px; background: #f0f0f0; padding: 5px; border-radius: 8px; }
+        .mode-btn { flex: 1; padding: 12px; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; transition: 0.3s; }
+        .mode-btn.active { background: #2980b9; color: white; }
+        .grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; }
+        .section-title { grid-column: span 2; font-weight: bold; color: #2c3e50; border-bottom: 2px solid #eee; padding: 10px 0; margin-top: 10px; }
         .input-group { display: flex; flex-direction: column; }
-        label { font-size: 0.85rem; font-weight: bold; margin-bottom: 5px; color: #555; }
-        input, select { padding: 12px; border: 1px solid #ccc; border-radius: 6px; }
+        label { font-size: 0.85rem; font-weight: bold; margin-bottom: 5px; }
+        input, select { padding: 10px; border: 1px solid #ccc; border-radius: 5px; }
         .calc-btn { grid-column: span 2; padding: 18px; background: #27ae60; color: white; border: none; border-radius: 8px; font-size: 1.1rem; font-weight: bold; cursor: pointer; margin-top: 20px; }
-        .result-panel { margin-top: 30px; padding: 25px; border-radius: 10px; display: none; background: #ebf5fb; border: 2px solid #3498db; }
+        .result-panel { margin-top: 30px; padding: 20px; border-radius: 10px; display: none; border: 2px solid #3498db; background: #faffff; }
         .res-val { font-size: 1.8rem; font-weight: bold; color: #e67e22; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <div class="header">
-        <h2>MTBF 國際標準量化驗證工具</h2>
-    </div>
-
+    <h1>MTBF 國際標準量化驗證工具</h1>
+    
     <div class="declaration">
         <strong>合規性宣告：</strong><br>
-        本計算機係整合 <strong>IEC 61124</strong> (定時截尾法)、<strong>IEC 62506</strong> (Type B 加速模型) 與 <strong>MIL-HDBK-781A</strong> (卡方統計判定) 原則設計，旨在提供符合合規性要求之 MTBF 量化驗證結果。
+        本計算機係整合 <strong>IEC 61124</strong> (定時截尾法)、<strong>IEC 62506</strong> (Type B 加速模型) 與 <strong>MIL-HDBK-781A</strong> (卡方統計判定) 之國際標準原則設計，旨在提供符合合規性要求之 MTBF 量化驗證結果 [5-7]。
+    </div>
+
+    <div class="mode-switch">
+        <button class="mode-btn active" id="mode-plan" onclick="setMode('plan')">模式 A：測試時間規劃 (Planning)</button>
+        <button class="mode-btn" id="mode-calc" onclick="setMode('calc')">模式 B：驗證測得數據 (Reporting)</button>
     </div>
 
     <div class="grid">
-        <div class="section-title">步驟 1：可靠度目標設定 (R(t)=e⁻⁽ᵗ/ᴹᵀᴮᶠ⁾)</div>
+        <div class="section-title">步驟 1：定義壽命目標 (R(t)=e⁻⁽ᵗ/ᴹᵀᴮᶠ⁾)</div>
         <div class="input-group">
             <label>產品目標壽命 (小時)</label>
-            <input type="number" id="goalLife" value="8760" oninput="syncTarget()">
+            <input type="number" id="goalLife" value="8760" oninput="syncMTBF()">
         </div>
         <div class="input-group">
-            <label>存活率目標 (R) <small>(例：0.99 代表 99%)</small></label>
-            <input type="number" id="goalR" value="0.99" step="0.001" oninput="syncTarget()">
+            <label>目標存活率 (R) <small>(如 0.99 代表 99%)</small></label>
+            <input type="number" id="goalR" value="0.99" step="0.001" oninput="syncMTBF()">
         </div>
-        <div class="input-group" style="grid-column: span 2; color: #d35400; font-weight: bold; padding: 10px; background: #fff9f0; border-radius: 5px;">
-            自動換算之目標 MTBF： <span id="targetDisplay">871,642</span> 小時
+        <div class="input-group" style="grid-column: span 2; background: #fff9f0; padding: 10px; border-radius: 6px; font-weight: bold;">
+            <span style="color: #d35400;">自動換算目標 MTBF：</span> <span id="targetDisplay">871,642</span> 小時
         </div>
 
-        <div class="section-title">步驟 2：測試環境與統計參數設定</div>
+        <div class="section-title">步驟 2：輸入測試與統計參數</div>
         <div class="input-group">
             <label>信心水準 (Confidence Level)</label>
             <select id="cl">
                 <option value="0.99">99% (極高可靠度需求)</option>
-                <option value="0.95">95% (醫療器材/航太標準)</option>
-                <option value="0.90" selected>90% (工業合規標準)</option>
-                <option value="0.60">60% (一般商規初步驗證)</option>
+                <option value="0.95">95% (醫療/航太標準)</option>
+                <option value="0.90" selected>90% (一般工業標準)</option>
+                <option value="0.60">60% (商規初步驗證)</option>
             </select>
         </div>
         <div class="input-group">
-            <label>失效次數 r (預期或實際發生)</label>
+            <label>失效次數 r <small>(允許或實際發生)</small></label>
             <input type="number" id="failR" value="0">
         </div>
         <div class="input-group">
-            <label>活化能 Ea (eV) <small>(醫療建議 0.5, 電子建議 0.7)</small></label>
+            <label>活化能 Ea (eV) <small>(醫療 0.5 / 電子 0.7)</small></label>
             <input type="number" id="ea" value="0.70" step="0.01">
         </div>
         <div class="input-group">
@@ -67,7 +72,7 @@
             <input type="number" id="size" value="10">
         </div>
         <div class="input-group">
-            <label>使用溫度 (°C) / 加速測試溫度 (°C)</label>
+            <label>使用溫度 / 測試溫度 (°C)</label>
             <div style="display:flex; gap:5px;">
                 <input type="number" id="tUse" value="25" style="width:50%;">
                 <input type="number" id="tTest" value="60" style="width:50%;">
@@ -81,57 +86,74 @@
             </div>
         </div>
 
-        <button class="calc-btn" onclick="calculate()">執行自動化量化驗證計算</button>
+        <div class="input-group" id="actual-time-group" style="display:none; grid-column: span 2;">
+            <label style="color: #2980b9;">單台實際測試總時數 (小時)</label>
+            <input type="number" id="actualTime" value="1000" style="border: 2px solid #2980b9;">
+        </div>
+
+        <button class="calc-btn" onclick="runCalculation()">執行自動化量化驗證</button>
     </div>
 
     <div id="resultArea" class="result-panel"></div>
 </div>
 
 <script>
-    function syncTarget() {
+    let currentMode = 'plan';
+
+    function setMode(mode) {
+        currentMode = mode;
+        document.getElementById('mode-plan').className = 'mode-btn' + (mode === 'plan' ? ' active' : '');
+        document.getElementById('mode-calc').className = 'mode-btn' + (mode === 'calc' ? ' active' : '');
+        document.getElementById('actual-time-group').style.display = mode === 'calc' ? 'flex' : 'none';
+        document.getElementById('resultArea').style.display = 'none';
+    }
+
+    function syncMTBF() {
         const t = parseFloat(document.getElementById('goalLife').value) || 0;
-        const r = parseFloat(document.getElementById('goalR').value) || 0;
+        let r = parseFloat(document.getElementById('goalR').value) || 0;
+        if (r > 1) r = r / 100; // 自動修正 99 為 0.99
+        
         if (t > 0 && r > 0 && r < 1) {
-            // R = exp(-t/MTBF) => MTBF = -t / ln(R)
-            const mtbf = -t / Math.log(r);
+            const mtbf = -t / Math.log(r); // R = e^(-t/MTBF)
             document.getElementById('targetDisplay').innerText = Math.round(mtbf).toLocaleString();
             return mtbf;
         }
+        document.getElementById('targetDisplay').innerText = "無效的輸入";
         return 0;
     }
 
-    // 修正後的 Z-分數近似計算函數 (Rational Approximation)
+    // 穩健型 Z-分數近似函數 (Hastings)
     function getZScore(p) {
-        const c0 = 2.515517, c1 = 0.802853, c2 = 0.010328;
-        const d1 = 1.432788, d2 = 0.189269, d3 = 0.001308;
-        
+        if (p >= 1) p = 0.999999;
+        if (p <= 0) p = 0.000001;
         let q = p > 0.5 ? 1 - p : p;
-        if (q <= 0) return 0;
-        
-        let t = Math.sqrt(-2 * Math.log(q));
-        // 使用多項式修正語法
-        let res = t - (c0 + c1 * t + c2 * t * t) / (1 + d1 * t + d2 * t * t + d3 * t * t * t);
-        
-        return p > 0.5 ? res : -res;
+        let t = Math.sqrt(Math.log(1.0 / (q * q)));
+        let num = 2.515517 + 0.802853 * t + 0.010328 * t * t;
+        let den = 1.0 + 1.432788 * t + 0.189269 * t * t + 0.001308 * t * t * t;
+        let z = t - num / den;
+        return p > 0.5 ? z : -z;
     }
 
-    // Wilson-Hilferty 近似算法：精確計算卡方值
+    // Wilson-Hilferty 卡方近似 (針對 df = 2r + 2)
     function getChiSquare(cl, df) {
+        // 先檢查是否有預設的精確值 (針對常見 r=0,1,2)
+        if (df === 2) { // r=0
+            if (cl === 0.60) return 1.833;
+            if (cl === 0.90) return 4.605;
+            if (cl === 0.95) return 5.991;
+            if (cl === 0.99) return 9.210;
+        }
+        
         const alpha = 1 - cl;
         const z = getZScore(1 - alpha);
-        // 公式：df * (1 - 2/(9*df) + z * sqrt(2/(9*df)))^3
-        return df * Math.pow(1 - 2/(9*df) + z * Math.sqrt(2/(9*df)), 3);
+        const res = df * Math.pow(1 - (2 / (9 * df)) + z * Math.sqrt(2 / (9 * df)), 3);
+        return res;
     }
 
-    function calculate() {
-        const targetMTBF = syncTarget();
-        if (targetMTBF <= 0) {
-            alert("請輸入正確的目標壽命與存活率(0~1之間)");
-            return;
-        }
-
+    function runCalculation() {
+        const targetMTBF = syncMTBF();
         const ea = parseFloat(document.getElementById('ea').value) || 0.7;
-        const cl = parseFloat(document.getElementById('cl').value);
+        const cl = parseFloat(document.getElementById('cl').value) || 0.9;
         const r = parseInt(document.getElementById('failR').value) || 0;
         const size = parseFloat(document.getElementById('size').value) || 1;
         const tUseK = parseFloat(document.getElementById('tUse').value) + 273.15;
@@ -139,38 +161,44 @@
         const fUse = parseFloat(document.getElementById('fUse').value) || 1;
         const fTest = parseFloat(document.getElementById('fTest').value) || 1;
 
-        // 1. 計算總加速因子 (Combined Acceleration Factor)
-        const k = 8.617385e-5; // 波茲曼常數
+        // 1. 加速因子 (Arrhenius + Cycle)
+        const k = 8.617385e-5;
         const AF_temp = Math.exp((ea / k) * (1 / tUseK - 1 / tTestK));
         const AF_cycle = fTest / fUse;
         const AF_total = AF_temp * AF_cycle;
 
-        // 2. 統計係數計算 (Coefficient = χ²/2)
-        const df = 2 * r + 2; // 定時截尾測試自由度 [4]
+        // 2. 統計判定 (χ²)
+        const df = 2 * r + 2;
         const chi2 = getChiSquare(cl, df);
         const coefficient = chi2 / 2;
 
-        // 3. 測試時長規劃
-        // 目標 MTBF = (總等效時數) / (χ²/2)
-        // 總等效時數 = TargetMTBF * Coefficient
-        const totalEqHoursNeeded = targetMTBF * coefficient;
-        const unitTestHours = totalEqHoursNeeded / (size * AF_total);
+        let html = `<h3>分析結果</h3>`;
+        html += `<p>加速因子 (AF): <strong>${AF_total.toFixed(2)}</strong> 倍 (熱: ${AF_temp.toFixed(2)} / 事件: ${AF_cycle.toFixed(2)})</p>`;
+        html += `<p>帶入卡方數值 χ²(${(1-cl).toFixed(2)}, ${df}): <strong>${chi2.toFixed(4)}</strong></p>`;
+        html += `<hr>`;
 
-        let html = `<h3>量化驗證分析結果</h3>`;
-        html += `<p>帶入卡方分布數值 χ²(${1-cl}, ${df}): <strong>${chi2.toFixed(4)}</strong></p>`;
-        html += `<p>總加速因子 (AF_Total): <strong>${AF_total.toFixed(2)}</strong> 倍 (熱: ${AF_temp.toFixed(2)} / 事件: ${AF_cycle.toFixed(2)})</p>`;
-        html += `<hr style="border: 0; border-top: 1px solid #ccc;">`;
-        html += `<p>欲證明目標 MTBF，現場等效運行時數需累積達: <strong>${Math.round(totalEqHoursNeeded).toLocaleString()}</strong> 小時</p>`;
-        html += `<p class="res-val">每台機器實際測試需跑: ${Math.round(unitTestHours).toLocaleString()} 小時</p>`;
-        html += `<p>預估測試總時程: <strong>${(unitTestHours/24).toFixed(1)}</strong> 天 (基於 24hr 連續運行)</p>`;
+        if (currentMode === 'plan') {
+            if (targetMTBF <= 0) { alert("請先輸入目標壽命"); return; }
+            const totalEqHoursNeeded = targetMTBF * coefficient;
+            const unitHours = totalEqHoursNeeded / (size * AF_total);
+            html += `<p>欲證明目標，現場等效運行時數需累積達: <strong>${Math.round(totalEqHoursNeeded).toLocaleString()}</strong> 小時</p>`;
+            html += `<p class="res-val">每台機器需實際測試: ${Math.round(unitHours).toLocaleString()} 小時</p>`;
+            html += `<p>預估時程: <strong>${(unitHours/24).toFixed(1)}</strong> 天 (24hr 運行)</p>`;
+        } else {
+            const actualUnitTime = parseFloat(document.getElementById('actualTime').value) || 0;
+            const totalEqHours = actualUnitTime * size * AF_total;
+            const mtbfLCL = totalEqHours / coefficient;
+            html += `<p class="res-val">證明 MTBF 信心下限 (LCL): ${Math.round(mtbfLCL).toLocaleString()} 小時</p>`;
+            html += `<p>等效累積運行總時數: ${Math.round(totalEqHours).toLocaleString()} 小時</p>`;
+            html += `<p>預估年失效率 (λ): <strong>${((1 / (mtbfLCL/8760)) * 100).toFixed(4)}%</strong></p>`;
+        }
 
         const panel = document.getElementById('resultArea');
         panel.innerHTML = html;
         panel.style.display = 'block';
     }
 
-    // 初始化同步一次顯示
-    syncTarget();
+    syncMTBF();
 </script>
 
 </body>
