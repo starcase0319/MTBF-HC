@@ -3,175 +3,182 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>可靠度驗證進階工具 (含熱加速與事件加速)</title>
+    <title>醫療器材 MTBF 驗證計算模型</title>
     <style>
-        body { font-family: -apple-system, system-ui, sans-serif; line-height: 1.5; color: #333; max-width: 900px; margin: 20px auto; padding: 20px; background-color: #f8f9fa; }
-        .container { background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
-        h2 { color: #2c3e50; border-bottom: 3px solid #3498db; padding-bottom: 10px; margin-top: 0; }
-        .mode-switch { display: flex; background: #eee; padding: 5px; border-radius: 8px; margin-bottom: 25px; }
-        .mode-btn { flex: 1; padding: 10px; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; background: none; transition: 0.3s; }
+        body { font-family: "Microsoft JhengHei", sans-serif; background-color: #f4f7f9; color: #333; line-height: 1.6; padding: 20px; }
+        .container { max-width: 900px; margin: 0 auto; background: #fff; padding: 30px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); }
+        h1 { color: #2c3e50; text-align: center; border-bottom: 2px solid #3498db; padding-bottom: 10px; }
+        h2 { font-size: 1.2rem; color: #2980b9; margin-top: 25px; }
+        .config-box { background: #eef7fa; padding: 15px; border-radius: 8px; margin-bottom: 20px; font-size: 0.9rem; }
+        .mode-switch { display: flex; gap: 10px; margin-bottom: 25px; }
+        .mode-btn { flex: 1; padding: 12px; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; background: #ddd; transition: 0.3s; }
         .mode-btn.active { background: #3498db; color: white; }
         .grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; }
-        .input-item { display: flex; flex-direction: column; }
-        label { font-size: 0.85rem; font-weight: 600; margin-bottom: 5px; color: #555; }
-        input, select { padding: 12px; border: 1px solid #ccc; border-radius: 6px; font-size: 1rem; }
-        .highlight-input { border-color: #e67e22; background: #fffdf5; }
-        button.calc-btn { width: 100%; padding: 15px; margin-top: 25px; border: none; border-radius: 8px; background: #27ae60; color: white; font-size: 1.1rem; font-weight: bold; cursor: pointer; }
-        .result-box { margin-top: 25px; padding: 20px; border-radius: 8px; display: none; }
-        .res-mtbf { background: #e8f4fd; border-left: 5px solid #3498db; }
-        .res-plan { background: #fef5e7; border-left: 5px solid #e67e22; }
-        .res-val { font-size: 1.5rem; font-weight: bold; color: #2c3e50; }
-        .footer-note { font-size: 0.75rem; color: #888; margin-top: 30px; border-top: 1px solid #eee; padding-top: 10px; }
+        .input-group { display: flex; flex-direction: column; }
+        label { font-weight: bold; margin-bottom: 5px; font-size: 0.9rem; color: #555; }
+        input, select { padding: 10px; border: 1px solid #ccc; border-radius: 5px; font-size: 1rem; }
+        .highlight { border-color: #e67e22; background: #fffdf5; }
+        .btn-calc { grid-column: span 2; padding: 15px; background: #27ae60; color: white; border: none; border-radius: 6px; font-size: 1.1rem; font-weight: bold; cursor: pointer; margin-top: 10px; }
+        .btn-calc:hover { background: #219150; }
+        .result-panel { margin-top: 30px; padding: 20px; border-radius: 8px; display: none; }
+        .res-calc { background: #ebf5fb; border-left: 6px solid #3498db; }
+        .res-plan { background: #fef5e7; border-left: 6px solid #e67e22; }
+        .res-val { font-size: 1.6rem; font-weight: bold; color: #2c3e50; }
+        .footer { margin-top: 40px; font-size: 0.8rem; color: #888; border-top: 1px solid #eee; padding-top: 15px; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h2 id="toolTitle">MTBF 測試時間預估工具</h2>
+    <h1>可靠度驗證計算模型</h1>
+    
+    <div class="config-box">
+        <strong>核心參數設定：</strong><br>
+        • 波茲曼常數 (k): 8.617 × 10⁻⁵ eV/K [1]<br>
+        • 活化能 (Ea): 預設 0.5 eV (醫療器材保守值) [2]<br>
+        • 自由度 (df): 2r + 2 (定時截尾測試規範) [3, 4]
+    </div>
 
     <div class="mode-switch">
-        <button class="mode-btn active" id="btnPlan" onclick="setMode('plan')">模式 A：預估所需測試時間</button>
-        <button class="mode-btn" id="btnCalc" onclick="setMode('calc')">模式 B：計算已測得 MTBF</button>
+        <button class="mode-btn active" id="mode-plan" onclick="setMode('plan')">模式 A：預估所需測試時間</button>
+        <button class="mode-btn" id="mode-calc" onclick="setMode('calc')">模式 B：計算已測得之 MTBF</button>
     </div>
 
     <div class="grid">
-        <!-- 共同參數 -->
-        <div class="input-item">
-            <label>測試樣本數量 (Sample Size)</label>
-            <input type="number" id="sampleSize" value="10">
+        <!-- 共同物理參數 -->
+        <div class="input-group">
+            <label>活化能 Ea (eV)</label>
+            <input type="number" id="ea" value="0.50" step="0.01">
         </div>
-        <div class="input-item">
-            <label>信心水準 (Confidence Level)</label>
+        <div class="input-group">
+            <label>信心水準 (CL)</label>
             <select id="confidence">
-                <option value="0.95">95% (醫療/軍標)</option>
-                <option value="0.90" selected>90% (工業標準)</option>
-                <option value="0.60">60% (一般商規)</option>
+                <option value="0.95">95% (嚴謹醫療標準)</option>
+                <option value="0.90" selected>90% (產業標準)</option>
+                <option value="0.80">80% (一般電子)</option>
             </select>
         </div>
-        <div class="input-item">
-            <label>活化能 Ea (eV) <small>(電子產品常數 0.67~0.7)</small></label>
-            <input type="number" id="ea" value="0.7" step="0.01">
-        </div>
-        <div class="input-item">
-            <label>失效次數 r (預期或實際)</label>
-            <input type="number" id="failures" value="0">
-        </div>
-
-        <!-- 熱加速參數 -->
-        <div class="input-item">
-            <label>正常使用溫度 (°C)</label>
+        <div class="input-group">
+            <label>使用環境溫度 (°C)</label>
             <input type="number" id="tUse" value="25">
         </div>
-        <div class="input-item">
+        <div class="input-group">
             <label>加速測試溫度 (°C)</label>
             <input type="number" id="tTest" value="60">
         </div>
 
-        <!-- 事件/循環加速參數 -->
-        <div class="input-item">
-            <label>測試頻率 (Cycles/hr 或次/hr)</label>
-            <input type="number" id="fTest" value="1" title="測試環境下的每小時操作次數">
+        <!-- 共同統計參數 -->
+        <div class="input-group">
+            <label>測試樣品數量 (Size)</label>
+            <input type="number" id="sampleSize" value="10">
         </div>
-        <div class="input-item">
-            <label>實際使用頻率 (Cycles/hr 或次/hr)</label>
-            <input type="number" id="fUse" value="1" title="正常環境下的每小時操作次數">
+        <div class="input-group">
+            <label>允許失效次數 (r)</label>
+            <input type="number" id="failures" value="0">
         </div>
 
-        <!-- 模式切換參數 -->
-        <div class="input-item" id="targetInput">
+        <!-- 模式切換輸入 -->
+        <div class="input-group" id="target-mtbf-group">
             <label style="color: #e67e22;">目標 MTBF (小時)</label>
-            <input type="number" class="highlight-input" id="targetMTBF" value="1000000">
+            <input type="number" class="highlight" id="targetMTBF" value="1000000">
         </div>
-        <div class="input-item" id="actualInput" style="display:none;">
-            <label style="color: #3498db;">單台實際測試時間 (小時)</label>
-            <input type="number" class="highlight-input" id="testHours" value="1000">
+        <div class="input-group" id="actual-time-group" style="display:none;">
+            <label style="color: #3498db;">單台測試時數 (小時)</label>
+            <input type="number" class="highlight" id="actualTime" value="1000">
         </div>
+
+        <button class="btn-calc" onclick="execute()">執行自動計算</button>
     </div>
 
-    <button class="calc-btn" onclick="runCalculation()">開始計算</button>
+    <div id="resultArea" class="result-panel"></div>
 
-    <div id="resultArea" class="result-box"></div>
-
-    <div class="footer-note">
-        <strong>依據標準：</strong><br>
-        1. 熱加速：Arrhenius 模型 (Boltzmann 常數 k=8.617e-5) [IEC 62506, 63]<br>
-        2. 事件加速：時間壓縮比模型 (AF = f_test / f_use) [IEC 62506, 26]<br>
-        3. 統計分佈：單側信心下限卡方統計 (Chi-Square, df=2r+2) [MIL-HDBK-781A, 46]
+    <div class="footer">
+        技術出處：<br>
+        1. 物理模型：Arrhenius Model (IEC 62506 Section 5.6.1.3) [1, 5]<br>
+        2. 統計規範：MIL-HDBK-781A (Section 5.10.8) 與 IEC 61124 [3, 6]<br>
+        3. 參數建議：Compaq CRE 可靠度工程規範 [2]
     </div>
 </div>
 
 <script>
-    let mode = 'plan';
+    let currentMode = 'plan';
 
-    function setMode(newMode) {
-        mode = newMode;
-        document.getElementById('btnPlan').classList.toggle('active', mode === 'plan');
-        document.getElementById('btnCalc').classList.toggle('active', mode === 'calc');
-        document.getElementById('targetInput').style.display = mode === 'plan' ? 'block' : 'none';
-        document.getElementById('actualInput').style.display = mode === 'calc' ? 'block' : 'none';
-        document.getElementById('toolTitle').innerText = mode === 'plan' ? 'MTBF 測試時間預估工具' : 'MTBF 測得結果計算工具';
+    function setMode(mode) {
+        currentMode = mode;
+        document.getElementById('mode-plan').classList.toggle('active', mode === 'plan');
+        document.getElementById('mode-calc').classList.toggle('active', mode === 'calc');
+        document.getElementById('target-mtbf-group').style.display = mode === 'plan' ? 'flex' : 'none';
+        document.getElementById('actual-time-group').style.display = mode === 'calc' ? 'flex' : 'none';
+        document.getElementById('resultArea').style.display = 'none';
     }
 
-    // 卡方逆函數近似
-    function getChiSquare(alpha, df) {
-        return 0.5 * Math.pow(Math.sqrt(2 * df - 1) + getZScore(1 - alpha), 2);
+    // 卡方分佈逆函數近似 (針對 2r+2 自由度)
+    function getChiSquare(p, df) {
+        const alpha = 1 - p;
+        // Wilson-Hilferty 近似法
+        const z = getZScore(1 - alpha);
+        return df * Math.pow(1 - 2/(9*df) + z * Math.sqrt(2/(9*df)), 3);
     }
 
     function getZScore(p) {
-        const c = [-7.784894, -0.322396, -2.400758, -2.549732, 4.374664, 2.938163];
-        const d = [7.784695, 0.322467, 2.445134, 3.754408];
+        const c = [2.515517, 0.802853, 0.010328];
+        const d = [1.432788, 0.189269, 0.001308];
         let t = Math.sqrt(-2 * Math.log(p > 0.5 ? 1-p : p));
-        let res = (((c*t+c[8])*t+c[9])*t+c[10]) / (((d*t+d[8])*t+d[9])*t+d[10]);
+        let res = t - ((c[7]*t + c[8])*t + c) / (((d[7]*t + d[8])*t + d)*t + 1);
         return p > 0.5 ? res : -res;
     }
 
-    function runCalculation() {
-        const size = parseFloat(document.getElementById('sampleSize').value);
+    function execute() {
+        // 讀取數值
         const ea = parseFloat(document.getElementById('ea').value);
-        const r = parseInt(document.getElementById('failures').value);
-        const alpha = 1 - parseFloat(document.getElementById('confidence').value);
+        const cl = parseFloat(document.getElementById('confidence').value);
         const tUseK = parseFloat(document.getElementById('tUse').value) + 273.15;
         const tTestK = parseFloat(document.getElementById('tTest').value) + 273.15;
-        const fTest = parseFloat(document.getElementById('fTest').value);
-        const fUse = parseFloat(document.getElementById('fUse').value);
+        const size = parseFloat(document.getElementById('sampleSize').value);
+        const r = parseInt(document.getElementById('failures').value);
+        const k = 8.617385e-5;
 
-        // 1. 計算加速因子
-        const AF_temp = Math.exp((ea / 8.617385e-5) * (1 / tUseK - 1 / tTestK));
-        const AF_cycle = fTest / fUse;
-        const AF_total = AF_temp * AF_cycle;
+        // 1. 計算熱加速因子 (Arrhenius AF)
+        const AF = Math.exp((ea / k) * (1 / tUseK - 1 / tTestK)); [2]
 
-        // 2. 統計係數 (Chi-Square)
-        const chi2 = getChiSquare(alpha, 2 * r + 2);
+        // 2. 統計係數 (Coefficient) = 卡方值 / 2
+        const df = 2 * r + 2; [4]
+        const chiSquareVal = getChiSquare(cl, df); [2]
+        const coefficient = chiSquareVal / 2;
 
-        let outputHtml = `<h3>分析結果</h3><p>總加速因子 (AF_total): <b>${AF_total.toFixed(2)}</b> 倍 <small>(熱: ${AF_temp.toFixed(2)} / 事件: ${AF_cycle.toFixed(2)})</small></p>`;
+        let output = `<h3>計算分析結果</h3>`;
+        output += `<p>加速因子 (AF): <strong>${AF.toFixed(3)}</strong> 倍</p>`;
+        output += `<p>統計係數 (χ²/2): <strong>${coefficient.toFixed(3)}</strong> (自由度=${df})</p>`;
 
-        if (mode === 'plan') {
-            const target = parseFloat(document.getElementById('targetMTBF').value);
-            // 公式：T_total_eq = (Target * chi2) / 2
-            const totalEqHoursNeeded = (target * chi2) / 2;
-            const unitTestHours = totalEqHoursNeeded / (size * AF_total);
-
-            outputHtml += `<div class="res-plan">
-                <p>總累積等效時數需達: <span class="res-val">${Math.round(totalEqHoursNeeded).toLocaleString()}</span> 小時</p>
-                <p><b>每台機器需實際測試:</b> <span class="res-val" style="color:#d35400;">${Math.round(unitTestHours).toLocaleString()}</span> 小時</p>
-                <p>若每天測試 24hr，約需 <b>${(unitTestHours / 24).toFixed(1)}</b> 天</p>
-            </div>`;
-            document.getElementById('resultArea').className = 'result-box res-plan';
+        if (currentMode === 'plan') {
+            // 模式 A：算時間
+            const targetMTBF = parseFloat(document.getElementById('targetMTBF').value);
+            // 公式：Total_Time_Eq = Target * Coefficient
+            const totalEqHoursNeeded = targetMTBF * coefficient; [2, 9]
+            const unitTestHours = totalEqHoursNeeded / (size * AF);
+            
+            output += `<div class="res-plan">`;
+            output += `<p>所需累積等效時數: <span class="res-val">${Math.round(totalEqHoursNeeded).toLocaleString()}</span> 小時</p>`;
+            output += `<p style="color:#d35400;"><b>每台機器需實際測試:</b> <span class="res-val">${Math.round(unitTestHours).toLocaleString()}</span> 小時</p>`;
+            output += `<p>若每日運行 24 小時，約需 <strong>${(unitTestHours/24).toFixed(1)}</strong> 天</p>`;
+            output += `</div>`;
+            document.getElementById('resultArea').className = 'result-panel res-plan';
         } else {
-            const hours = parseFloat(document.getElementById('testHours').value);
-            // 公式：MTBF_LCL = (2 * T_total_eq) / chi2
-            const totalEqHours = (hours * size) * AF_total;
-            const mtbfLCL = (2 * totalEqHours) / chi2;
+            // 模式 B：算 MTBF
+            const actualUnitHours = parseFloat(document.getElementById('actualTime').value);
+            // 公式：MTBF = (Actual_Time * Size * AF) / Coefficient
+            const totalEqHours = actualUnitHours * size * AF; [4]
+            const mtbfLCL = totalEqHours / coefficient;
 
-            outputHtml += `<div class="res-mtbf">
-                <p>證明 MTBF 信心下限 (LCL): <span class="res-val">${Math.round(mtbfLCL).toLocaleString()}</span> 小時</p>
-                <p>等效現場運行總時數: ${Math.round(totalEqHours).toLocaleString()} 小時</p>
-                <p>預估年失效率 (λ): <b>${((1 / (mtbfLCL / 8760)) * 100).toFixed(3)}%</b></p>
-            </div>`;
-            document.getElementById('resultArea').className = 'result-box res-mtbf';
+            output += `<div class="res-calc">`;
+            output += `<p>證明 MTBF 信心下限 (LCL): <br><span class="res-val" style="color:#2980b9;">${Math.round(mtbfLCL).toLocaleString()}</span> 小時</p>`;
+            output += `<p>等效現場累積運行總時數: ${Math.round(totalEqHours).toLocaleString()} 小時</p>`;
+            output += `<p>預估年失效率 (λ): <b>${((1 / (mtbfLCL/8760)) * 100).toFixed(4)}%</b></p>`;
+            output += `</div>`;
+            document.getElementById('resultArea').className = 'result-panel res-calc';
         }
 
-        document.getElementById('resultArea').innerHTML = outputHtml;
+        document.getElementById('resultArea').innerHTML = output;
         document.getElementById('resultArea').style.display = 'block';
     }
 </script>
