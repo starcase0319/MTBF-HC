@@ -3,22 +3,27 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MTBF 測試時間預估工具 (國際標準合規版)</title>
+    <title>MTBF 測試預估與驗證工具 (國際標準版)</title>
     <style>
         body { font-family: "Segoe UI", "Microsoft JhengHei", sans-serif; background-color: #f4f7fa; color: #334155; line-height: 1.5; padding: 20px; }
         .container { max-width: 1000px; margin: 0 auto; background: white; padding: 40px; border-radius: 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); }
-        h1 { color: #1e3a8a; text-align: center; font-size: 1.6rem; margin-bottom: 5px; border-bottom: 3px solid #3b82f6; padding-bottom: 15px; }
-        .section { margin-bottom: 25px; padding: 25px; border: 1px solid #e2e8f0; border-radius: 12px; background: #fff; }
-        .section-title { font-weight: bold; color: #2563eb; margin-bottom: 15px; font-size: 1.1rem; display: flex; align-items: center; }
+        h1 { color: #1e3a8a; text-align: center; font-size: 1.6rem; margin-bottom: 25px; border-bottom: 3px solid #3b82f6; padding-bottom: 15px; }
+        .mode-switch { display: flex; gap: 10px; margin-bottom: 25px; background: #eee; padding: 5px; border-radius: 8px; }
+        .mode-btn { flex: 1; padding: 12px; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; background: none; transition: 0.3s; }
+        .mode-btn.active { background: #3b82f6; color: white; }
+        .section { margin-bottom: 25px; padding: 20px; border: 1px solid #e2e8f0; border-radius: 12px; background: #fff; }
+        .section-title { font-weight: bold; color: #2563eb; margin-bottom: 15px; font-size: 1.1rem; }
         .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
         .input-group { display: flex; flex-direction: column; }
         label { font-weight: 600; font-size: 0.85rem; margin-bottom: 5px; }
         input, select { padding: 12px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 1rem; }
         .calc-btn { width: 100%; padding: 20px; background: #2563eb; color: white; border: none; border-radius: 10px; font-size: 1.2rem; font-weight: bold; cursor: pointer; margin-top: 10px; }
+        .calc-btn:hover { background: #1e40af; }
+        .fail-times-box { grid-column: span 2; background: #fff5f5; padding: 15px; border-radius: 8px; border: 1px solid #feb2b2; display: none; margin-top: 10px; }
+        .fail-input-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 10px; }
         .report-panel { margin-top: 40px; padding: 35px; border-radius: 15px; display: none; background: #f8fafc; border: 2px solid #10b981; }
         .step-box { margin-bottom: 25px; padding: 20px; background: white; border-radius: 10px; border-left: 5px solid #10b981; }
         .formula-card { background: #f1fdf7; border: 1px solid #d1fae5; padding: 15px; border-radius: 8px; font-family: "Consolas", monospace; color: #047857; margin: 12px 0; font-size: 0.95rem; line-height: 1.4; }
-        .highlight-text { color: #b91c1c; font-weight: bold; }
         .final-result { text-align: center; background: #fff1f2; border: 2px solid #f43f5e; padding: 30px; border-radius: 12px; margin-top: 30px; }
         .res-highlight { font-size: 2.8rem; font-weight: 800; color: #be123c; display: block; margin: 10px 0; }
     </style>
@@ -27,6 +32,11 @@
 
 <div class="container">
     <h1>MTBF 測試時間預估工具</h1>
+
+    <div class="mode-switch">
+        <button class="mode-btn active" id="btn-plan" onclick="setMode('plan')">模式 A：測試時間規劃 (Planning)</button>
+        <button class="mode-btn" id="btn-calc" onclick="setMode('calc')">模式 B：驗證測得數據 (Reporting)</button>
+    </div>
 
     <!-- 1. 客戶可靠度目標值 -->
     <div class="section">
@@ -49,17 +59,27 @@
                     <option value="0.90">90%</option>
                 </select>
             </div>
-            <div class="input-group"><label>允許失效次數 (r)</label><input type="number" id="failR" value="0"></div>
+            <div class="input-group">
+                <label id="failLabel">預期/實際失效次數 (r)</label>
+                <input type="number" id="failR" value="0" min="0" oninput="toggleFailInputs()">
+            </div>
             <div class="input-group">
                 <label>測試樣品數量 (Sample Size)</label>
-                <input type="number" id="size" value="10">
+                <input type="number" id="size" value="10" min="1">
             </div>
             <div class="input-group">
                 <label>失效處理策略</label>
-                <select id="replaceStrategy">
-                    <option value="replace">失效立即替換 (新品或修復)</option>
-                    <option value="noreplace">失效不替換 (測試座位停止)</option>
+                <select id="strategy" onchange="toggleFailInputs()">
+                    <option value="replace">失效立即替換 (樣品數固定)</option>
+                    <option value="noreplace">失效不替換 (填寫失效時數)</option>
                 </select>
+            </div>
+
+            <!-- 動態失效時間填寫區 -->
+            <div id="failInputsBox" class="fail-times-box">
+                <label style="color: #c53030;">請輸入各台失效時的時間 (小時)：</label>
+                <div id="failInputGrid" class="fail-input-grid"></div>
+                <small style="display:block; margin-top:10px; color: #718096;">* 註：剩餘未失效機器將計算至測試結束點。</small>
             </div>
         </div>
     </div>
@@ -76,15 +96,53 @@
         </div>
     </div>
 
+    <div class="section" id="reporting-time-box" style="display:none; background: #f0fff4;">
+        <div class="section-title">4. 實際測試進度</div>
+        <div class="input-group">
+            <label>測試結束/截止時間 (單台小時)</label>
+            <input type="number" id="actualUnitTime" value="1000">
+        </div>
+    </div>
+
     <button class="calc-btn" onclick="generateReport()">MTBF 測試時間預估計算</button>
 
     <div id="reportArea" class="report-panel">
-        <h2 style="text-align: center; color: #065f46; margin-bottom: 35px;">可靠度量化驗證預估報告</h2>
+        <h2 style="text-align: center; color: #065f46; margin-bottom: 35px;">可靠度量化驗證分析報告</h2>
         <div id="reportContent"></div>
     </div>
 </div>
 
 <script>
+    let currentMode = 'plan';
+
+    function setMode(mode) {
+        currentMode = mode;
+        document.getElementById('btn-plan').classList.toggle('active', mode === 'plan');
+        document.getElementById('btn-calc').classList.toggle('active', mode === 'calc');
+        document.getElementById('reporting-time-box').style.display = mode === 'calc' ? 'block' : 'none';
+        document.getElementById('failLabel').innerText = mode === 'plan' ? '預期失效次數 (r)' : '實際失效次數 (r)';
+        toggleFailInputs();
+    }
+
+    function toggleFailInputs() {
+        const r = parseInt(document.getElementById('failR').value) || 0;
+        const strategy = document.getElementById('strategy').value;
+        const box = document.getElementById('failInputsBox');
+        const grid = document.getElementById('failInputGrid');
+
+        // 僅在「不替換」且「失效次數 > 0」且「Reporting 模式」下強制填寫更精確
+        // 在 Planning 模式下，我們假設失效發生在測試結束前夕（最保守）
+        if (strategy === 'noreplace' && r > 0) {
+            box.style.display = 'block';
+            grid.innerHTML = '';
+            for (let i = 1; i <= r; i++) {
+                grid.innerHTML += `<div><label>#${i} 失效時數</label><input type="number" class="fail-time-input" value="0"></div>`;
+            }
+        } else {
+            box.style.display = 'none';
+        }
+    }
+
     function getExactChiSquare(cl, r) {
         const table = {
             "0.99": [9.210, 13.277, 16.812, 20.090, 23.209],
@@ -98,68 +156,98 @@
         const days = parseFloat(document.getElementById('targetDays').value);
         const R = parseFloat(document.getElementById('targetR').value);
         const cl = parseFloat(document.getElementById('cl').value);
-        const r = parseInt(document.getElementById('failR').value);
+        const r = parseInt(document.getElementById('failR').value) || 0;
         const size = parseFloat(document.getElementById('size').value);
         const ea = parseFloat(document.getElementById('ea').value);
-        const strategy = document.getElementById('replaceStrategy').value;
+        const strategy = document.getElementById('strategy').value;
         const tUseK = parseFloat(document.getElementById('tUse').value) + 273.15;
         const tTestK = parseFloat(document.getElementById('tTest').value) + 273.15;
-        const fUse = parseFloat(document.getElementById('fUse').value) || 1;
-        const fTest = parseFloat(document.getElementById('fTest').value) || 1;
+        const AF_total = Math.exp((ea / 8.617385e-5) * (1 / tUseK - 1 / tTestK)) * (parseFloat(document.getElementById('fTest').value) / parseFloat(document.getElementById('fUse').value));
 
         const targetMTBF = -(days * 24) / Math.log(R);
-        const AF_temp = Math.exp((ea / 8.617385e-5) * (1 / tUseK - 1 / tTestK));
-        const AF_cycle = fTest / fUse;
-        const AF_total = AF_temp * AF_cycle;
         const chi2 = getExactChiSquare(cl, r);
-        const totalEqHoursNeeded = (targetMTBF * chi2) / 2;
-        const totalLabHoursNeeded = totalEqHoursNeeded / AF_total;
-        const unitActualHours = totalLabHoursNeeded / size;
+        const coeff = chi2 / 2;
+        const totalEqHoursRequired = targetMTBF * coeff;
 
-        let strategyNote = strategy === 'replace' 
-            ? "測試期間發生失效將立即更換新品，樣品數保持固定。" 
-            : "測試期間失效樣品將撤除，其餘樣品需分擔剩餘等效時數。";
+        let totalLabHours = 0;
+        let resultHtml = "";
 
-        let html = `
+        if (currentMode === 'plan') {
+            // Planning 模式：計算單台需跑多久
+            // 若不替換，我們保守假設所有失效發生在測試結束點 (T)，累積時數依然接近 n*T
+            const unitTimeNeeded = totalEqHoursRequired / (size * AF_total);
+            totalLabHours = unitTimeNeeded * size;
+
+            resultHtml = `
+                <div class="step-box">
+                    <div class="step-header">步驟四：測試時程邏輯校核</div>
+                    <div class="step-desc">
+                        欲證明目標 MTBF (${Math.round(targetMTBF).toLocaleString()} 小時)，所需累積等效總台時為：<b>${Math.round(totalEqHoursRequired).toLocaleString()} 小時</b>。
+                        <div class="formula-card">
+                            單台測試小時 = 總等效台時 / (樣品數 × 總加速倍率)
+                        </div>
+                        <b>策略說明：</b>採用「${strategy === 'replace' ? '失效替換' : '失效不替換'}」策略。在規劃階段，預估每台設備需運行的基礎時間如下。
+                    </div>
+                </div>
+                <div class="final-result">
+                    每台受測設備建議測試運行：
+                    <span class="res-highlight">${Math.round(unitTimeNeeded).toLocaleString()} 小時</span>
+                    預估時程約 <b>${(unitTimeNeeded/24).toFixed(1)} 天</b>
+                </div>`;
+        } else {
+            // Reporting 模式：根據填寫時間算證明了多少 MTBF
+            const endTime = parseFloat(document.getElementById('actualUnitTime').value);
+            if (strategy === 'replace') {
+                totalLabHours = size * endTime;
+            } else {
+                const failInputs = document.querySelectorAll('.fail-time-input');
+                let failSum = 0;
+                failInputs.forEach(input => failSum += (parseFloat(input.value) || 0));
+                totalLabHours = failSum + (size - r) * endTime; // 關鍵公式 [1-3]
+            }
+
+            const provenTotalEqHours = totalLabHours * AF_total;
+            const mtbfLCL = provenTotalEqHours / coeff;
+
+            resultHtml = `
+                <div class="step-box">
+                    <div class="step-header">步驟四：單台測試時間與累積台時計算</div>
+                    <div class="step-desc">
+                        根據您輸入的數據，實驗室累積總時數推導如下：
+                        <div class="formula-card">
+                            累積實驗室總時數 = ${strategy === 'noreplace' ? 'Σ(各台失效時間) + (未失效數 × 截止時間)' : '樣品數 × 截止時間'}<br>
+                            = <b>${Math.round(totalLabHours).toLocaleString()} 小時</b>
+                        </div>
+                        現場等效累積總台時 (T*) = 累積實驗室總時數 × 加速因子 = <b>${Math.round(provenTotalEqHours).toLocaleString()} 小時</b>。
+                    </div>
+                </div>
+                <div class="final-result">
+                    經量化驗證，證明 MTBF 信心下限 (LCL) 為：
+                    <span class="res-highlight">${Math.round(mtbfLCL).toLocaleString()} 小時</span>
+                    驗證結果：${mtbfLCL >= targetMTBF ? '<b style="color:green;">符合目標要求</b>' : '<b style="color:red;">未達目標要求</b>'}
+                </div>`;
+        }
+
+        document.getElementById('reportContent').innerHTML = `
             <div class="step-box">
                 <div class="step-header">步驟一：目標 MTBF 換算</div>
-                <div class="step-desc">根據客戶要求的壽命與可靠度，計算得目標 MTBF = <b>${Math.round(targetMTBF).toLocaleString()} 小時</b>。</div>
+                <div class="step-desc">目標 MTBF = <b>${Math.round(targetMTBF).toLocaleString()} 小時</b>。</div>
             </div>
-
             <div class="step-box">
                 <div class="step-header">步驟二：加速因子評估</div>
-                <div class="step-desc">當前物理與事件組合加速倍率 (AF_total) 為：<b>${AF_total.toFixed(2)}</b> 倍。</div>
+                <div class="step-desc">總加速倍率 (AF_total) = <b>${AF_total.toFixed(2)}</b> 倍。</div>
             </div>
-
             <div class="step-box">
                 <div class="step-header">步驟三：統計係數設定</div>
-                <div class="step-desc">依據 MIL-HDBK-781A，信心水準 ${cl*100}% 且失效次數 r=${r} 下，帶入卡方精確值 χ² = <b>${chi2.toFixed(3)}</b>。</div>
+                <div class="step-desc">信心水準 ${cl*100}%，r=${r}，帶入卡方精確值 χ² = <b>${chi2.toFixed(3)}</b>。</div>
             </div>
+            ${resultHtml}`;
 
-            <div class="step-box">
-                <div class="step-header">步驟四：測試時程邏輯校核 (Consistency Check)</div>
-                <div class="step-desc">
-                    為在統計上證明目標 MTBF，所需之數據量推導如下：
-                    <div class="formula-card">
-                        1. 所需現場等效總台時 (T*) = (MTBF_target × χ²) / 2 = <span class="highlight-text">${Math.round(totalEqHoursNeeded).toLocaleString()}</span> 小時<br>
-                        2. 實驗室累積總台時 = T* / AF_total = <span class="highlight-text">${Math.round(totalLabHoursNeeded).toLocaleString()}</span> 小時<br>
-                        3. 每台機器測試時數 = 實驗室總台時 / 樣品數 (${size} 台)
-                    </div>
-                    <b>策略提醒：</b>本測試採「${strategy === 'replace' ? '失效替換' : '失效不替換'}」策略。${strategyNote}
-                </div>
-            </div>
-
-            <div class="final-result">
-                最終建議：每台受測設備實際測試需運行
-                <span class="res-highlight">${Math.round(unitActualHours).toLocaleString()} 小時</span>
-                預估測試天數：<b>${(unitActualHours/24).toFixed(1)} 天</b> (24hr 運作)
-            </div>
-        `;
-
-        document.getElementById('reportContent').innerHTML = html;
         document.getElementById('reportArea').style.display = 'block';
         window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
     }
+
+    setMode('plan');
 </script>
 
 </body>
