@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MTBF 測試時間預估工具 (邏輯校對版)</title>
+    <title>MTBF 測試時間預估工具 </title>
     <style>
         body { font-family: "Segoe UI", "Microsoft JhengHei", sans-serif; background-color: #f4f7fa; color: #334155; line-height: 1.5; padding: 20px; }
         .container { max-width: 1000px; margin: 0 auto; background: white; padding: 40px; border-radius: 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); }
@@ -64,15 +64,15 @@
             <div class="input-group"><label>活化能 Ea (eV)</label><input type="number" id="ea" value="0.60" step="0.01"></div>
             <div class="input-group"><label>使用環境溫度 (°C)</label><input type="number" id="tUse" value="25"></div>
             <div class="input-group"><label>加速測試溫度 (°C)</label><input type="number" id="tTest" value="60"></div>
-            <div class="input-group"><label>實際使用頻率 (次 / 天)</label><input type="number" id="fUse" value="1"></div>
-            <div class="input-group"><label>測試操作頻率 (次 / 天)</label><input type="number" id="fTest" value="1"></div>
+            <div class="input-group"><label>產品宣稱使用頻率 (次 / 天)</label><input type="number" id="fUse" value="1"></div>
+            <div class="input-group"><label>實際測試操作頻率 (次 / 天)</label><input type="number" id="fTest" value="1"></div>
         </div>
     </div>
 
     <button class="calc-btn" onclick="generateConsistentReport()">MTBF 測試時間預估計算</button>
 
     <div id="reportArea" class="report-panel">
-        <h2 style="text-align: center; color: #065f46; margin-bottom: 35px;">量化驗證預估報告 (校核一致性)</h2>
+        <h2 style="text-align: center; color: #065f46; margin-bottom: 35px;">MTBF測試時間與估結果</h2>
         <div id="reportContent"></div>
     </div>
 </div>
