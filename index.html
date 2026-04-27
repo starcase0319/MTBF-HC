@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MTBF 測試預估與驗證工具 (國際標準版)</title>
+    <title>MTBF 測試預估工具 (計算過程透明版)</title>
     <style>
         body { font-family: "Segoe UI", "Microsoft JhengHei", sans-serif; background-color: #f4f7fa; color: #334155; line-height: 1.5; padding: 20px; }
         .container { max-width: 1000px; margin: 0 auto; background: white; padding: 40px; border-radius: 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); }
@@ -15,12 +15,13 @@
         label { font-weight: 600; font-size: 0.85rem; margin-bottom: 5px; }
         input, select { padding: 12px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 1rem; }
         .calc-btn { width: 100%; padding: 20px; background: #2563eb; color: white; border: none; border-radius: 10px; font-size: 1.2rem; font-weight: bold; cursor: pointer; margin-top: 10px; }
-        .calc-btn:hover { background: #1e40af; }
         .fail-times-box { grid-column: span 2; background: #fff5f5; padding: 20px; border-radius: 8px; border: 1px solid #feb2b2; display: none; margin-top: 10px; }
         .fail-input-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 15px; margin-top: 10px; }
         .report-panel { margin-top: 40px; padding: 35px; border-radius: 15px; display: none; background: #f8fafc; border: 2px solid #10b981; }
         .step-box { margin-bottom: 25px; padding: 20px; background: white; border-radius: 10px; border-left: 5px solid #10b981; }
-        .formula-card { background: #f1fdf7; border: 1px solid #d1fae5; padding: 15px; border-radius: 8px; font-family: "Consolas", monospace; color: #047857; margin: 10px 0; font-size: 0.95rem; line-height: 1.4; }
+        .step-header { font-weight: bold; color: #065f46; font-size: 1.05rem; margin-bottom: 10px; }
+        .formula-card { background: #f1fdf7; border: 1px solid #d1fae5; padding: 20px; border-radius: 8px; font-family: "Consolas", monospace; color: #047857; margin: 12px 0; font-size: 0.95rem; line-height: 1.6; }
+        .math-val { color: #b91c1c; font-weight: bold; text-decoration: underline; }
         .final-result { text-align: center; background: #fff1f2; border: 2px solid #f43f5e; padding: 30px; border-radius: 12px; margin-top: 30px; }
         .res-highlight { font-size: 2.8rem; font-weight: 800; color: #be123c; display: block; margin: 10px 0; }
     </style>
@@ -62,16 +63,14 @@
             <div class="input-group">
                 <label>失效處理策略</label>
                 <select id="strategy" onchange="toggleFailInputs()">
-                    <option value="replace">失效立即替換 (樣品數固定)</option>
-                    <option value="noreplace">失效不替換 (需填寫失效時數)</option>
+                    <option value="replace">失效立即替換 (新品補位)</option>
+                    <option value="noreplace">失效不替換 (測試座停止累積)</option>
                 </select>
             </div>
 
-            <!-- 動態失效時間填寫區 -->
             <div id="failInputsBox" class="fail-times-box">
-                <label style="color: #c53030;">請輸入每一台發生失效時的測試時數 (小時)：</label>
+                <label style="color: #c53030;">請填寫各台機器的失效發生時間 (小時)：</label>
                 <div id="failInputGrid" class="fail-input-grid"></div>
-                <small style="display:block; margin-top:10px; color: #718096;">* 註：系統將自動計算失效台時。未失效機器將以最終測試時數計算。</small>
             </div>
         </div>
     </div>
@@ -88,9 +87,8 @@
         </div>
     </div>
 
-    <button class="calc-btn" onclick="generateReport()">MTBF 測試時間預估計算</button>
+    <button class="calc-btn" onclick="generateDetailedReport()">MTBF 測試時間預估計算</button>
 
-    <!-- 報告呈現區 -->
     <div id="reportArea" class="report-panel">
         <h2 style="text-align: center; color: #065f46; margin-bottom: 35px;">可靠度量化驗證預估報告</h2>
         <div id="reportContent"></div>
@@ -98,7 +96,6 @@
 </div>
 
 <script>
-    // 動態生成失效時間輸入框
     function toggleFailInputs() {
         const r = parseInt(document.getElementById('failR').value) || 0;
         const size = parseInt(document.getElementById('size').value) || 0;
@@ -106,122 +103,91 @@
         const box = document.getElementById('failInputsBox');
         const grid = document.getElementById('failInputGrid');
 
-        // 安全檢查：失效次數不可超過樣品數
-        if (r > size) {
-            alert("失效次數不可大於樣品數量！");
-            document.getElementById('failR').value = size;
-            return;
-        }
+        if (r > size) { alert("失效次數不可大於樣品數量！"); document.getElementById('failR').value = size; return; }
 
         if (strategy === 'noreplace' && r > 0) {
             box.style.display = 'block';
             grid.innerHTML = '';
             for (let i = 1; i <= r; i++) {
-                grid.innerHTML += `
-                    <div class="input-group">
-                        <label>第 ${i} 台失效時間(hr)</label>
-                        <input type="number" class="fail-time-input" placeholder="例如: 500" value="0">
-                    </div>`;
+                grid.innerHTML += `<div><label>第 ${i} 台失效(hr)</label><input type="number" class="fail-time-input" value="0"></div>`;
             }
-        } else {
-            box.style.display = 'none';
-        }
+        } else { box.style.display = 'none'; }
     }
 
-    // 精確卡方表數據 (df = 2r + 2)
     function getExactChiSquare(cl, r) {
-        const table = {
-            "0.99": [9.210, 13.277, 16.812, 20.090, 23.209],
-            "0.95": [5.991, 9.488, 12.592, 15.507, 18.307],
-            "0.90": [4.605, 7.779, 10.645, 13.362, 15.987]
-        };
+        const table = { "0.99": [9.210, 13.277, 16.812, 20.090, 23.209], "0.95": [5.991, 9.488, 12.592, 15.507, 18.307], "0.90": [4.605, 7.779, 10.645, 13.362, 15.987] };
         return table[cl.toString()][r] || 5.991;
     }
 
-    function generateReport() {
-        // 數據讀取
+    function generateDetailedReport() {
         const days = parseFloat(document.getElementById('targetDays').value);
         const R = parseFloat(document.getElementById('targetR').value);
         const cl = parseFloat(document.getElementById('cl').value);
         const r = parseInt(document.getElementById('failR').value) || 0;
         const size = parseFloat(document.getElementById('size').value);
         const ea = parseFloat(document.getElementById('ea').value);
-        const strategy = document.getElementById('replaceStrategy') ? document.getElementById('replaceStrategy').value : document.getElementById('strategy').value;
+        const strategy = document.getElementById('strategy').value;
         const tUseK = parseFloat(document.getElementById('tUse').value) + 273.15;
         const tTestK = parseFloat(document.getElementById('tTest').value) + 273.15;
-        const fUse = parseFloat(document.getElementById('fUse').value) || 1;
-        const fTest = parseFloat(document.getElementById('fTest').value) || 1;
+        const AF_total = Math.exp((ea / 8.617385e-5) * (1 / tUseK - 1 / tTestK)) * (parseFloat(document.getElementById('fTest').value) / parseFloat(document.getElementById('fUse').value));
 
-        // 1. 目標 MTBF 換算 [5]
         const targetMTBF = -(days * 24) / Math.log(R);
-
-        // 2. 加速因子計算 [5]
-        const AF_temp = Math.exp((ea / 8.617385e-5) * (1 / tUseK - 1 / tTestK));
-        const AF_cycle = fTest / fUse;
-        const AF_total = AF_temp * AF_cycle;
-
-        // 3. 統計係數與卡方值 [1, 3]
         const chi2 = getExactChiSquare(cl, r);
         const coeff = chi2 / 2;
-        const totalEqHoursNeeded = targetMTBF * coeff;
+        const totalEqHoursNeeded = targetMTBF * coeff; // T*
 
-        // 4. 計算單台時數
+        // 步驟四詳細推導
+        let step4Math = "";
         let unitActualHours = 0;
-        let labHoursFormula = "";
-        
+        const labTotalNeeded = totalEqHoursNeeded / AF_total;
+
         if (strategy === 'replace') {
-            unitActualHours = (totalEqHoursNeeded / AF_total) / size;
-            labHoursFormula = `實驗室總累積時數 = 樣品數 (${size}) × 單台時數`;
+            unitActualHours = labTotalNeeded / size;
+            step4Math = `
+                1. 統計達標門檻 (T*) = MTBF 目標 (${Math.round(targetMTBF).toLocaleString()}) × 統計係數 (${coeff.toFixed(3)}) = <span class="math-val">${Math.round(totalEqHoursNeeded).toLocaleString()}</span> 小時<br>
+                2. 實驗室累積總時數需求 = T* / 總加速因子 (${AF_total.toFixed(2)}) = <span class="math-val">${Math.round(labTotalNeeded).toLocaleString()}</span> 小時<br>
+                3. 單台測試小時 = 實驗室總需求 / 樣品數 (${size}) = <span class="math-val">${Math.round(unitActualHours).toLocaleString()}</span> 小時
+            `;
         } else {
-            // 失效不替換邏輯：T* = [Σ(T_fail) + (n-r) * T_end] * AF [1]
-            // 在預估階段，我們假設失效發生在測試中點(平均)或由使用者填寫
             const failInputs = document.querySelectorAll('.fail-time-input');
             let sumFailHours = 0;
             failInputs.forEach(input => sumFailHours += parseFloat(input.value) || 0);
             
-            if (sumFailHours > 0) {
-                // 如果有填寫具體失效時間，則計算剩餘需要的時間
-                unitActualHours = ( (totalEqHoursNeeded / AF_total) - sumFailHours ) / (size - r);
-            } else {
-                // 若未填寫(規劃階段)，假設失效發生在測試結束點 (最保守估計)
-                unitActualHours = (totalEqHoursNeeded / AF_total) / size;
-            }
-            labHoursFormula = `實驗室總累積時數 = Σ(各台失效時間) + (未失效台數 × 截止時間)`;
+            unitActualHours = (labTotalNeeded - sumFailHours) / (size - r);
+            step4Math = `
+                1. 統計達標門檻 (T*) = MTBF 目標 (${Math.round(targetMTBF).toLocaleString()}) × 統計係數 (${coeff.toFixed(3)}) = <span class="math-val">${Math.round(totalEqHoursNeeded).toLocaleString()}</span> 小時<br>
+                2. 實驗室累積總時數需求 = T* / 總加速因子 (${AF_total.toFixed(2)}) = <span class="math-val">${Math.round(labTotalNeeded).toLocaleString()}</span> 小時<br>
+                3. 已發生失效累積時數 = <span class="math-val">${sumFailHours.toLocaleString()}</span> 小時<br>
+                4. 剩餘機器需分擔時數 = (${Math.round(labTotalNeeded).toLocaleString()} - ${sumFailHours.toLocaleString()}) / (${size} - ${r}) = <span class="math-val">${Math.round(unitActualHours).toLocaleString()}</span> 小時
+            `;
         }
 
-        let html = `
+        document.getElementById('reportContent').innerHTML = `
             <div class="step-box">
-                <div class="step-header">步驟一：目標 MTBF 換算</div>
-                <div class="step-desc">欲達成 ${days} 天存活率 ${(R*100).toFixed(1)}%，目標 MTBF 為 <b>${Math.round(targetMTBF).toLocaleString()} 小時</b>。</div>
+                <div class="step-header">步驟一：目標 MTBF 換算 (Reliability Target)</div>
+                <div class="step-desc">欲證明產品在 ${days} 天內具備 ${(R*100).toFixed(1)}% 存活率，目標 MTBF 需達 <b>${Math.round(targetMTBF).toLocaleString()} 小時</b>。</div>
             </div>
             <div class="step-box">
-                <div class="step-header">步驟二：加速因子評估</div>
+                <div class="step-header">步驟二：加速因子評估 (Acceleration Modeling)</div>
                 <div class="step-desc">組合加速倍率 (AF_total) 為：<b>${AF_total.toFixed(2)}</b> 倍。</div>
             </div>
             <div class="step-box">
-                <div class="step-header">步驟三：統計係數設定 (MIL-HDBK-781A)</div>
-                <div class="step-desc">信心水準 ${cl*100}%，失效次數 r=${r}，卡方值 χ² = <b>${chi2.toFixed(3)}</b>。</div>
+                <div class="step-header">步驟三：統計判定標準 (Statistical Inference)</div>
+                <div class="step-desc">信心水準 ${cl*100}%，失效 r=${r}，帶入卡方精確值 χ² = <b>${chi2.toFixed(3)}</b>。</div>
             </div>
             <div class="step-box">
-                <div class="step-header">步驟四：測試時程邏輯校核 (Consistency Check)</div>
+                <div class="step-header">步驟四：測試時間計算過程 (Calculation Step-by-Step)</div>
                 <div class="step-desc">
-                    為證明目標 MTBF，所需之數據量推導如下：
-                    <div class="formula-card">
-                        1. 所需現場等效總台時 (T*) = (MTBF_target × χ²) / 2 = <b style="color:#b91c1c;">${Math.round(totalEqHoursNeeded).toLocaleString()}</b> 小時<br>
-                        2. ${labHoursFormula}<br>
-                        3. 每台機器測試時數 = (T* / AF_total - 失效累積時數) / 有效樣品數
-                    </div>
-                    <b>策略：</b>採用「${strategy === 'replace' ? '失效替換' : '失效不替換'}」策略。
+                    依據 <b>MIL-HDBK-781A</b> 之數據量要求，本實驗之推導過程如下：
+                    <div class="formula-card">${step4Math}</div>
+                    <b>註解：</b>上述計算確保了所有受測樣品共同累積的「等效台時」足以跨越統計證明的門檻值。
                 </div>
             </div>
             <div class="final-result">
-                建議每台受測設備實際測試需運行：
+                建議每台受測設備實際測試運行：
                 <span class="res-highlight">${Math.round(unitActualHours).toLocaleString()} 小時</span>
-                預估測試天數：<b>${(unitActualHours/24).toFixed(1)} 天</b> (24hr 運作)
-            </div>
-        `;
-
-        document.getElementById('reportContent').innerHTML = html;
+                預估測試天數：<b>${(unitActualHours/24).toFixed(1)} 天</b> (基於 24hr 連續運作)
+            </div>`;
         document.getElementById('reportArea').style.display = 'block';
         window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
     }
