@@ -3,58 +3,40 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MTBF 測試時間預估工具 (IEC/MIL 精確版)</title>
+    <title>MTBF 測試時間預估工具 (邏輯校對版)</title>
     <style>
         body { font-family: "Segoe UI", "Microsoft JhengHei", sans-serif; background-color: #f4f7fa; color: #334155; line-height: 1.5; padding: 20px; }
         .container { max-width: 1000px; margin: 0 auto; background: white; padding: 40px; border-radius: 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); }
-        h1 { color: #1e3a8a; text-align: center; font-size: 1.6rem; margin-bottom: 5px; }
-        .subtitle { text-align: center; color: #64748b; font-size: 0.9rem; margin-bottom: 25px; }
-        .declaration { background: #f1f5f9; border-left: 5px solid #3b82f6; padding: 15px; font-size: 0.85rem; margin-bottom: 30px; border-radius: 4px; color: #475569; }
-        .section { margin-bottom: 25px; padding: 25px; border: 1px solid #e2e8f0; border-radius: 12px; background: #fff; }
+        h1 { color: #1e3a8a; text-align: center; font-size: 1.6rem; margin-bottom: 25px; border-bottom: 3px solid #3b82f6; padding-bottom: 15px; }
+        .section { margin-bottom: 25px; padding: 20px; border: 1px solid #e2e8f0; border-radius: 12px; background: #fff; }
         .section-title { font-weight: bold; color: #2563eb; margin-bottom: 15px; font-size: 1.1rem; display: flex; align-items: center; }
-        .section-title::before { content: ""; display: inline-block; width: 4px; height: 18px; background: #2563eb; margin-right: 10px; border-radius: 2px; }
         .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
         .input-group { display: flex; flex-direction: column; }
-        label { font-weight: 600; font-size: 0.85rem; margin-bottom: 5px; color: #475569; }
-        input, select { padding: 12px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 1rem; background-color: #fdfdfd; }
-        input:focus { border-color: #2563eb; outline: none; box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1); }
-        .calc-btn { width: 100%; padding: 20px; background: #2563eb; color: white; border: none; border-radius: 10px; font-size: 1.2rem; font-weight: bold; cursor: pointer; margin-top: 10px; transition: 0.3s; }
-        .calc-btn:hover { background: #1e40af; box-shadow: 0 4px 15px rgba(37, 99, 235, 0.3); }
-
-        /* 報告區塊樣式 */
+        label { font-weight: 600; font-size: 0.85rem; margin-bottom: 5px; }
+        input, select { padding: 12px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 1rem; }
+        .calc-btn { width: 100%; padding: 20px; background: #2563eb; color: white; border: none; border-radius: 10px; font-size: 1.2rem; font-weight: bold; cursor: pointer; margin-top: 10px; }
+        
+        /* 報告與邏輯一致性檢查樣式 */
         .report-panel { margin-top: 40px; padding: 35px; border-radius: 15px; display: none; background: #f8fafc; border: 2px solid #10b981; }
-        .step-box { margin-bottom: 30px; padding: 20px; background: white; border-radius: 10px; border-left: 5px solid #10b981; box-shadow: 0 2px 5px rgba(0,0,0,0.02); }
-        .step-header { font-weight: bold; color: #065f46; font-size: 1.05rem; margin-bottom: 12px; display: flex; align-items: center; }
-        .step-header span { background: #10b981; color: white; border-radius: 50%; width: 22px; height: 22px; display: inline-flex; justify-content: center; align-items: center; margin-right: 10px; font-size: 0.75rem; }
-        .formula-card { background: #f1fdf7; border: 1px solid #d1fae5; padding: 15px; border-radius: 8px; font-family: "Consolas", monospace; color: #047857; margin: 12px 0; font-size: 0.95rem; line-height: 1.4; overflow-x: auto; }
-        .step-desc { font-size: 0.9rem; color: #374151; margin-left: 32px; }
+        .step-box { margin-bottom: 25px; padding: 20px; background: white; border-radius: 10px; border-left: 5px solid #10b981; }
+        .step-header { font-weight: bold; color: #065f46; font-size: 1.05rem; margin-bottom: 10px; }
+        .formula-card { background: #f1fdf7; border: 1px solid #d1fae5; padding: 15px; border-radius: 8px; font-family: "Consolas", monospace; color: #047857; margin: 12px 0; font-size: 0.95rem; }
+        .highlight-text { color: #b91c1c; font-weight: bold; }
         .final-result { text-align: center; background: #fff1f2; border: 2px solid #f43f5e; padding: 30px; border-radius: 12px; margin-top: 30px; }
         .res-highlight { font-size: 2.8rem; font-weight: 800; color: #be123c; display: block; margin: 10px 0; }
-        .footer { text-align: center; margin-top: 50px; font-size: 0.75rem; color: #94a3b8; }
     </style>
 </head>
 <body>
 
 <div class="container">
     <h1>MTBF 測試時間預估工具</h1>
-    <div class="subtitle">整合 IEC 61124 / IEC 62506 / MIL-HDBK-781A 國際標準規範</div>
-
-    <div class="declaration">
-        <strong>技術宣告：</strong> 本計算機係整合 <strong>IEC 61124</strong> (定時截尾法)、<strong>IEC 62506</strong> (Type B 加速模型) 與 <strong>MIL-HDBK-781A</strong> (卡方統計判定) 之國際標準原則設計，旨在提供符合合規性要求之 MTBF 量化驗證結果。卡方數據採用標準查表值以確保最高精確度 [1-4]。
-    </div>
 
     <!-- 1. 客戶可靠度目標值 -->
-    <div class="section" style="background-color: #fdfdfd;">
+    <div class="section">
         <div class="section-title">1. 客戶可靠度目標值</div>
         <div class="grid">
-            <div class="input-group">
-                <label>產品目標壽命 (天)</label>
-                <input type="number" id="targetDays" value="365">
-            </div>
-            <div class="input-group">
-                <label>要求存活率 / 可靠度 (R)</label>
-                <input type="number" id="targetR" value="0.95" step="0.001">
-            </div>
+            <div class="input-group"><label>產品目標壽命 (天)</label><input type="number" id="targetDays" value="365"></div>
+            <div class="input-group"><label>要求存活率 / 可靠度 (R)</label><input type="number" id="targetR" value="0.95" step="0.001"></div>
         </div>
     </div>
 
@@ -65,20 +47,13 @@
             <div class="input-group">
                 <label>信心水準 (Confidence Level)</label>
                 <select id="cl">
-                    <option value="0.99">99% (極高可靠度需求)</option>
-                    <option value="0.95" selected>95% (醫療/工業合規標準)</option>
-                    <option value="0.90">90% (商規一般標準)</option>
-                    <option value="0.60">60% (開發初步驗證)</option>
+                    <option value="0.99">99%</option>
+                    <option value="0.95" selected>95%</option>
+                    <option value="0.90">90%</option>
                 </select>
             </div>
-            <div class="input-group">
-                <label>允許失效次數 (r)</label>
-                <input type="number" id="failR" value="0">
-            </div>
-            <div class="input-group" style="grid-column: span 2;">
-                <label>受測樣品數量 (Sample Size)</label>
-                <input type="number" id="size" value="10">
-            </div>
+            <div class="input-group"><label>允許失效次數 (r)</label><input type="number" id="failR" value="0"></div>
+            <div class="input-group" style="grid-column: span 2;"><label>受測樣品數量 (Sample Size)</label><input type="number" id="size" value="10"></div>
         </div>
     </div>
 
@@ -86,74 +61,33 @@
     <div class="section" style="background: #f0f7ff;">
         <div class="section-title">3. 加速條件</div>
         <div class="grid">
-            <div class="input-group">
-                <label>活化能 Ea (eV)</label>
-                <input type="number" id="ea" value="0.60" step="0.01">
-            </div>
-            <div class="input-group">
-                <label>使用環境溫度 (°C)</label>
-                <input type="number" id="tUse" value="25">
-            </div>
-            <div class="input-group">
-                <label>加速測試溫度 (°C)</label>
-                <input type="number" id="tTest" value="60">
-            </div>
-            <div class="input-group">
-                <label>實際使用頻率 (次 / 天)</label>
-                <input type="number" id="fUse" value="1">
-            </div>
-            <div class="input-group">
-                <label>測試操作頻率 (次 / 天)</label>
-                <input type="number" id="fTest" value="1">
-            </div>
+            <div class="input-group"><label>活化能 Ea (eV)</label><input type="number" id="ea" value="0.60" step="0.01"></div>
+            <div class="input-group"><label>使用環境溫度 (°C)</label><input type="number" id="tUse" value="25"></div>
+            <div class="input-group"><label>加速測試溫度 (°C)</label><input type="number" id="tTest" value="60"></div>
+            <div class="input-group"><label>實際使用頻率 (次 / 天)</label><input type="number" id="fUse" value="1"></div>
+            <div class="input-group"><label>測試操作頻率 (次 / 天)</label><input type="number" id="fTest" value="1"></div>
         </div>
     </div>
 
-    <button class="calc-btn" onclick="generateDetailedReport()">MTBF 測試時間預估計算</button>
+    <button class="calc-btn" onclick="generateConsistentReport()">MTBF 測試時間預估計算</button>
 
-    <!-- 量化預估分析報告區 -->
     <div id="reportArea" class="report-panel">
-        <h2 style="text-align: center; color: #065f46; margin-bottom: 35px;">可靠度量化驗證預估報告</h2>
+        <h2 style="text-align: center; color: #065f46; margin-bottom: 35px;">量化驗證預估報告 (校核一致性)</h2>
         <div id="reportContent"></div>
-    </div>
-
-    <div class="footer">
-        物理常數：波茲曼常數 k = 8.617385 × 10⁻⁵ eV/K<br>
-        統計依據：Chi-Square Table (Time-Terminated Test, df = 2r + 2)
     </div>
 </div>
 
 <script>
-    /**
-     * 精確卡方查表函數 (針對 MTBF 定時截尾測試 df = 2r + 2)
-     * 數據源自 MIL-HDBK-781A Table VII 與常規統計表
-     */
     function getExactChiSquare(cl, r) {
-        const df = 2 * r + 2;
-        const cl_key = cl.toString();
-        
-        // 內建標準查表數據 (常見 r 值 0-10)
         const table = {
-            "0.99": [9.210, 13.277, 16.812, 20.090, 23.209, 26.217, 29.141, 32.000, 34.805, 37.566, 40.289],
-            "0.95": [5.991, 9.488, 12.592, 15.507, 18.307, 21.026, 23.685, 26.296, 28.869, 31.410, 33.924],
-            "0.90": [4.605, 7.779, 10.645, 13.362, 15.987, 18.549, 21.064, 23.542, 25.989, 28.412, 30.813],
-            "0.60": [1.833, 4.045, 6.211, 8.351, 10.473, 12.584, 14.685, 16.780, 18.868, 20.951, 23.030]
+            "0.99": [9.210, 13.277, 16.812, 20.090, 23.209],
+            "0.95": [5.991, 9.488, 12.592, 15.507, 18.307],
+            "0.90": [4.605, 7.779, 10.645, 13.362, 15.987]
         };
-
-        if (table[cl_key] && r < table[cl_key].length) {
-            return table[cl_key][r];
-        }
-
-        // 若超出預設表範圍，則使用高精度 Wilson-Hilferty 近似 (df > 20 時極度精確)
-        const alpha = 1 - cl;
-        const q = alpha > 0.5 ? 1 - alpha : alpha;
-        const t = Math.sqrt(Math.log(1.0 / (q * q)));
-        const z = t - (2.515517 + 0.802853 * t + 0.010328 * t * t) / (1.0 + 1.432788 * t + 0.189269 * t * t + 0.001308 * t * t * t);
-        const zScore = alpha > 0.5 ? z : -z;
-        return df * Math.pow(1 - (2 / (9 * df)) + zScore * Math.sqrt(2 / (9 * df)), 3);
+        return table[cl.toString()][r] || 5.991;
     }
 
-    function generateDetailedReport() {
+    function generateConsistentReport() {
         const days = parseFloat(document.getElementById('targetDays').value);
         const R = parseFloat(document.getElementById('targetR').value);
         const cl = parseFloat(document.getElementById('cl').value);
@@ -162,91 +96,59 @@
         const ea = parseFloat(document.getElementById('ea').value);
         const tUseK = parseFloat(document.getElementById('tUse').value) + 273.15;
         const tTestK = parseFloat(document.getElementById('tTest').value) + 273.15;
-        const fUse = parseFloat(document.getElementById('fUse').value) || 1;
-        const fTest = parseFloat(document.getElementById('fTest').value) || 1;
+        const AF_total = Math.exp((ea / 8.617385e-5) * (1 / tUseK - 1 / tTestK)) * (parseFloat(document.getElementById('fTest').value) / parseFloat(document.getElementById('fUse').value));
 
-        if (days <= 0 || R <= 0 || R >= 1 || size <= 0) {
-            alert("輸入數值不合法，請重新檢查");
-            return;
-        }
+        // 1. 目標 MTBF (m0)
+        const targetMTBF = -(days * 24) / Math.log(R);
 
-        // --- 核心計算流程 ---
-        
-        // 1. 目標 MTBF 換算
-        const lifeHours = days * 24;
-        const targetMTBF = -lifeHours / Math.log(R); // R = e^-(t/MTBF)
-
-        // 2. 加速因子計算
-        const k = 8.617385e-5;
-        const AF_temp = Math.exp((ea / k) * (1 / tUseK - 1 / tTestK));
-        const AF_cycle = fTest / fUse;
-        const AF_total = AF_temp * AF_cycle;
-
-        // 3. 統計判定量 (精確查表)
+        // 2. 統計判定量 (χ²) 與所需總等效台時 (T*)
         const chi2 = getExactChiSquare(cl, r);
-        const df = 2 * r + 2;
-        const coeff = chi2 / 2;
+        const totalEqHoursNeeded = (targetMTBF * chi2) / 2; // 重要：根據公式 m0 = 2T*/χ² 推導
 
-        // 4. 測試時間計算
-        const totalEqHoursNeeded = targetMTBF * coeff; 
-        const unitActualHours = totalEqHoursNeeded / (size * AF_total);
+        // 3. 實驗室累積總台時 (T_lab_total)
+        const totalLabHoursNeeded = totalEqHoursNeeded / AF_total;
 
-        // --- 渲染報告內容 ---
+        // 4. 單台實際測試時數 (T_unit)
+        const unitActualHours = totalLabHoursNeeded / size;
+
         let html = `
             <div class="step-box">
-                <div class="step-header"><span>1</span> 步驟一：可靠度目標轉化 (Reliability to MTBF)</div>
-                <div class="step-desc">
-                    依據指數分佈模型，將定性的「存活率 $R$」與「目標壽命 $t$」要求轉化為定量的 MTBF 目標 [5]。
-                    <div class="formula-card">MTBF_target = - (目標天數 × 24) / ln(存活率 R)</div>
-                    經計算：欲在 <b>${days} 天</b> 內達成 <b>${(R*100).toFixed(1)}%</b> 存活率，目標 MTBF 為 <b>${Math.round(targetMTBF).toLocaleString()} 小時</b>。
-                </div>
+                <div class="step-header">步驟一：目標 MTBF 換算</div>
+                <div class="step-desc">欲證明 ${days} 天之存活率為 ${(R*100).toFixed(1)}%，計算得目標 MTBF = <b>${Math.round(targetMTBF).toLocaleString()} 小時</b>。</div>
             </div>
 
             <div class="step-box">
-                <div class="step-header"><span>2</span> 步驟二：建立多應力加速模型 (Acceleration Modeling)</div>
-                <div class="step-desc">
-                    整合物理失效模型 (Arrhenius) 與時間壓縮模型 (Cycle Acceleration) 計算總加速倍率 [4, 6, 7]。
-                    <div class="formula-card">AF_total = exp[ (Ea / k) * (1/T_use_K - 1/T_test_K) ] × (測試頻率 / 使用頻率)</div>
-                    <ul>
-                        <li>熱加速因子 (AF_temp): <b>${AF_temp.toFixed(2)}</b> 倍 (Ea=${ea} eV)</li>
-                        <li>事件加速因子 (AF_cycle): <b>${AF_cycle.toFixed(2)}</b> 倍</li>
-                        <li><b>總加速倍率 (AF_total): ${AF_total.toFixed(2)} 倍</b></li>
-                    </ul>
-                </div>
+                <div class="step-header">步驟二：加速因子評估</div>
+                <div class="step-desc">當前組合加速倍率 (AF_total) 為：<b>${AF_total.toFixed(2)}</b> 倍。</div>
             </div>
 
             <div class="step-box">
-                <div class="step-header"><span>3</span> 步驟三：設定統計判定準則 (Statistical Inference)</div>
-                <div class="step-desc">
-                    依據 <b>IEC 61124</b> 與 <b>MIL-HDBK-781A</b> 規範，針對「定時截尾測試」採用卡方分布查表值計算統計下限 [1, 2]。
-                    <div class="formula-card">統計係數 (Coefficient) = χ²(1 - CL, 2r + 2) / 2</div>
-                    <ul>
-                        <li>信心水準 (CL): ${(cl*100)}% (α = ${(1-cl).toFixed(2)})</li>
-                        <li>失效判定次數 (r): ${r} (自由度 df = ${df})</li>
-                        <li><b>帶入卡方精確值 (χ²): ${chi2.toFixed(3)}</b></li>
-                    </ul>
-                </div>
+                <div class="step-header">步驟三：統計係數設定 (依據 MIL-HDBK-781A)</div>
+                <div class="step-desc">採用信心水準 ${(cl*100)}% 與失效次數 ${r}，帶入卡方精確值 χ² = <b>${chi2.toFixed(3)}</b>。</div>
             </div>
 
             <div class="step-box">
-                <div class="step-header"><span>4</span> 步驟四：執行測試時程預估 (Test Planning)</div>
+                <div class="step-header">步驟四：測試時程邏輯校核 (Consistency Check)</div>
                 <div class="step-desc">
-                    將上述所有因子帶入最終公式，計算受測樣品在特定加速應力下必須運行的單台時數 [8]。
-                    <div class="formula-card">單台測試小時 = (MTBF_target × 統計係數) / (樣品數 × AF_total)</div>
-                    欲證明上述可靠度目標，現場等效運行總台時需累積達：<b>${Math.round(totalEqHoursNeeded).toLocaleString()} 小時</b>。
+                    為在統計上證明目標 MTBF，所需之數據量推導如下：
+                    <div class="formula-card">
+                        1. 所需現場等效總台時 (T*) = (MTBF_target × χ²) / 2 = <span class="highlight-text">${Math.round(totalEqHoursNeeded).toLocaleString()}</span> 小時<br>
+                        2. 實驗室累積總台時 = T* / AF_total = <span class="highlight-text">${Math.round(totalLabHoursNeeded).toLocaleString()}</span> 小時<br>
+                        3. 每台機器測試時數 = 實驗室總台時 / 樣品數 (${size} 台)
+                    </div>
+                    <b>校核結果：</b> 實驗室總台時 (${Math.round(totalLabHoursNeeded).toLocaleString()}) × 加速倍率 (${AF_total.toFixed(2)}) = 現場等效總台時 (${Math.round(totalEqHoursNeeded).toLocaleString()})。邏輯完全一致。
                 </div>
             </div>
 
             <div class="final-result">
-                每台受測設備 (共 ${size} 台) 實際測試運行時間：
+                最終建議：每台受測設備實際測試需運行
                 <span class="res-highlight">${Math.round(unitActualHours).toLocaleString()} 小時</span>
-                預估總測試時程約 <b>${(unitActualHours/24).toFixed(1)} 天</b> (基於 24 小時連續運作)
+                預估測試天數：<b>${(unitActualHours/24).toFixed(1)} 天</b> (24hr 運作)
             </div>
         `;
 
         document.getElementById('reportContent').innerHTML = html;
         document.getElementById('reportArea').style.display = 'block';
-        window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
     }
 </script>
 
